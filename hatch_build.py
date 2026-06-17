@@ -7,6 +7,7 @@ library gives consumers an instant, prebuilt lookup (no tree walk at runtime).
 
 import json
 import os
+import sys
 
 from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 
@@ -16,17 +17,12 @@ class CustomBuildHook(BuildHookInterface):
 
     def initialize(self, version, build_data):
         pkg = os.path.join(self.root, "src", "ir_canonical")
-        controls = os.path.join(pkg, "controls")
-        mapping = {}
-        for entry in sorted(os.listdir(controls)):
-            aliases_path = os.path.join(controls, entry, "aliases.json")
-            if not os.path.isfile(aliases_path):
-                continue
-            canonical = entry.lower()
-            with open(aliases_path, encoding="utf-8") as fh:
-                aliases = json.load(fh)
-            for name in [canonical, *aliases]:
-                mapping[name.lower()] = canonical
+        sys.path.insert(0, os.path.join(self.root, "src"))
+        from ir_canonical.compile import compile_controls
+
+        mapping, conflicts = compile_controls(os.path.join(pkg, "controls"))
+        if conflicts:
+            raise SystemExit(f"alias conflicts: {conflicts}")
         out = os.path.join(pkg, "control_map.json")
         with open(out, "w", encoding="utf-8") as fh:
             json.dump(dict(sorted(mapping.items())), fh, ensure_ascii=False,

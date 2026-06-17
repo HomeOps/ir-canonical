@@ -53,6 +53,8 @@ TOKEN_EXPAND = {
     "rpt": "repeat", "fav": "favorite", "favorites": "favorite",
     "favourite": "favorite", "favourites": "favorite", "again": "repeat",
     "srch": "search", "in": "input",
+    # input synonyms
+    "coaxial": "coax", "toslink": "optical", "earc": "arc",
 }
 
 # Device-context / filler tokens to drop (so "TV_Vol+" -> volume_up). dvd/cd/vcr
@@ -181,12 +183,19 @@ CORE = [
     "digit_0", "digit_1", "digit_2", "digit_3", "digit_4",
     "digit_5", "digit_6", "digit_7", "digit_8", "digit_9",
     "source",
+    # discrete inputs — important for activity switching (HDMI 1, AUX 2, Optical…)
+    "input_hdmi1", "input_hdmi2", "input_hdmi3", "input_hdmi4",
+    "input_av1", "input_av2", "input_component", "input_composite",
+    "input_aux", "input_aux1", "input_aux2",
+    "input_optical", "input_coax", "input_arc",
+    "input_usb", "input_bluetooth",
+    "input_tv", "input_pc", "input_vga", "input_phono",
 ]
 
 INPUT_LABELS = {
     "hdmi", "video", "component", "composite", "vga", "dvi", "scart", "av",
     "aux", "usb", "pc", "antenna", "cable", "tuner", "phono", "bluetooth",
-    "game", "sat",
+    "game", "sat", "optical", "coax", "arc", "analog",
 }
 
 # A standalone button whose whole name is one of these selects that source
@@ -213,6 +222,7 @@ def _tokens(name, drop=True):
     s = re.sub(r"\+", " up ", s)
     s = re.sub(r"-(?![a-z])", " down ", s)               # trailing/standalone minus
     s = re.sub(r"[<>\[\]()*#~&!?:;\"'`=]", " ", s)        # drop stray symbols
+    s = re.sub(r"(?<=[a-z])(?=\d)", " ", s)               # split letter↔digit: hdmi1 -> hdmi 1
     s = re.sub(r"[/_.,\-]", " ", s)                       # separators
     out = []
     for tok in s.split():
@@ -236,7 +246,7 @@ def _input_canonical(tokens):
     if len(rest) == 1 and rest[0] in INPUT_LABELS:
         lab = rest[0]
         if d:
-            return f"input_{lab}_{d}" if lab in NUMBERED_INPUTS else None
+            return f"input_{lab}{d}" if lab in NUMBERED_INPUTS else None
         return f"input_{lab}"
     return None
 
@@ -254,6 +264,17 @@ def canonical(name):
     nodrop = _tokens(name, drop=False)
     if len(nodrop) == 1 and nodrop[0] in SOURCE_LABELS:
         return f"input_{nodrop[0]}"
+    # "INPUT TV", "TV INPUT", "INPUT HDMI 1" -> select that source by label.
+    if "input" in nodrop:
+        rest = [t for t in nodrop if t != "input"]
+        labels = [t for t in rest if not t.isdigit()]
+        digits = [t for t in rest if t.isdigit()]
+        if len(labels) == 1 and labels[0] in SOURCE_LABELS and len(digits) <= 1:
+            d = digits[0] if digits else ""
+            if not d:
+                return f"input_{labels[0]}"
+            if len(d) == 1 and labels[0] in NUMBERED_INPUTS:
+                return f"input_{labels[0]}{d}"
     tokens = _tokens(name)
     if not tokens:
         return None

@@ -17,8 +17,15 @@ def test_resolve_is_case_insensitive():
 def test_canonical_engine_handles_unseen_spellings():
     assert canonical("Ch_prev") == "channel_down"
     assert canonical("Play/Pause") == "play_pause"
-    assert canonical("HDMI_1") == "input_hdmi_1"
     assert canonical("SCAN_>>") == "fast_forward"
+
+
+def test_input_controls():
+    assert canonical("HDMI_1") == "input_hdmi1"
+    assert canonical("AUX 2") == "input_aux2"
+    assert canonical("Optical") == "input_optical"
+    assert canonical("ARC") == "input_arc"
+    assert resolve("HDMI_1") == "input_hdmi1"
 
 
 def test_map_keys_are_lowercased():
