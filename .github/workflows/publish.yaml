@@ -1,26 +1,43 @@
-name: publish
+name: release + publish
 
-# Fires when release-please publishes a GitHub Release. Builds the wheel/sdist
-# (the hatch hook bakes the current controls/ map in) and uploads to PyPI via
-# trusted publishing (OIDC — no API token).
+# release-please AND PyPI publish in ONE workflow run. A GitHub Release created
+# by release-please via GITHUB_TOKEN does NOT trigger a separate `on: release`
+# workflow (GitHub's recursion guard), so the publish job lives here and runs in
+# the same invocation once a release is cut. Kept named `publish.yaml` so the
+# PyPI trusted publisher (workflow `publish.yaml`, environment `pypi`) matches.
 #
-# One-time setup on PyPI: create the project `homeops-ir-canonical` and add a
-# trusted publisher → owner `HomeOps`, repo `ir-canonical`, workflow
-# `publish.yaml`, environment `pypi`.
+# Manual backfill: `gh workflow run publish.yaml --ref vX.Y.Z` builds + publishes
+# that ref directly (the release-please job is skipped on workflow_dispatch).
 on:
-  release:
-    types: [published]
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
-  id-token: write        # OIDC for PyPI trusted publishing
-  contents: read
+  contents: write
+  pull-requests: write
 
 jobs:
+  release-please:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.rp.outputs.release_created }}
+    steps:
+      - id: rp
+        uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
   pypi:
-    name: Build + publish to PyPI
+    needs: [release-please]
+    # Publish when release-please just cut a release, or on a manual dispatch.
+    if: ${{ always() && (needs.release-please.outputs.release_created == 'true' || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-latest
     environment: pypi
+    permissions:
+      id-token: write        # OIDC for PyPI trusted publishing
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
