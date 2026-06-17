@@ -17,10 +17,30 @@ cannot match a control by raw name.
 
 | File | What |
 |------|------|
+| `controls/<Name>/aliases.json` | **The human-editable curated tree** — one folder per core control, holding a JSON list of its spellings. |
 | `build_name_map.py` | Generator + the importable `canonical(name)` function. |
-| `data/canonical_controls.yaml` | The canonical vocabulary, grouped by category. |
+| `data/canonical_controls.yaml` | The full canonical vocabulary (all 194), grouped by category. |
 | `data/flipper_name_map.json` | `{ name: canonical_name }`, keys **lower-cased** — look up with `name.lower()`. |
 | `data/unmapped_names.txt` | The long tail (device-specific labels, typos), by frequency, for review. |
+
+## The curated controls tree (edit this by hand)
+
+`controls/` is the human-owned source of truth for the **core** controls that
+matter for driving activities (power / volume / channel / transport / navigation
+/ digits / source — a curated subset, not all 194):
+
+```
+controls/
+  Volume_Up/aliases.json     ["VOL+", "Vol_up", "VOLUME_UP", "AMP_VOL+", ...]
+  Power_Toggle/aliases.json  ["POWER", "STANDBY", "TV_POWER", "PWR", ...]
+  ...
+```
+
+The generator **seeds** each `aliases.json` from the database (most-frequent
+spelling first) and then **never overwrites it** — so once you've pruned or
+extended a control's aliases by hand, re-running keeps your edits. To add a new
+control, make a folder and an `aliases.json`; to widen coverage, drop spellings
+into the matching control.
 
 ## How the mapping works
 

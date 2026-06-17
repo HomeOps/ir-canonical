@@ -188,6 +188,22 @@ reg("reset", "edit", "reset")
 reg("store", "edit", "store")
 reg("delete", "edit", "delete")
 
+# Curated subset of canonical controls to publish as {name, aliases}. These are
+# the controls that matter for driving activities across TVs / AVRs / STBs /
+# players — not the full 194 (inputs, colors, niche A/V keys are left out).
+CORE = [
+    "power_toggle", "power_on", "power_off",
+    "volume_up", "volume_down", "mute",
+    "channel_up", "channel_down",
+    "play", "pause", "stop", "record",
+    "rewind", "fast_forward", "next", "previous",
+    "up", "down", "left", "right", "select", "back", "exit",
+    "home", "menu", "info", "guide",
+    "digit_0", "digit_1", "digit_2", "digit_3", "digit_4",
+    "digit_5", "digit_6", "digit_7", "digit_8", "digit_9",
+    "source",
+]
+
 INPUT_LABELS = {
     "hdmi", "video", "component", "composite", "vga", "dvi", "scart", "av",
     "aux", "usb", "pc", "antenna", "cable", "tuner", "phono", "bluetooth",
@@ -289,6 +305,11 @@ def tally(clone_dir):
     return counts
 
 
+def _title(canon):
+    """canonical id -> human folder name: volume_up -> Volume_Up, source -> Source."""
+    return "_".join(p.capitalize() for p in canon.split("_"))
+
+
 def _category_of(canon):
     if canon.startswith("digit_"):
         return "digit"
@@ -353,6 +374,39 @@ def main(argv):
             for canon in sorted(vocab[cat]):
                 fh.write(f"  - {canon}\n")
 
+    # controls/<Name>/aliases.json — the human-editable curated tree, one folder
+    # per CORE control holding a JSON list of its spellings. Seeded from the DB
+    # (most-frequent spelling first, case-insensitively deduped) and NEVER
+    # overwritten once it exists, so hand edits survive a re-run.
+    inv = {}
+    for raw, n in counts.items():
+        c = canonical(raw)
+        if c:
+            inv.setdefault(c, Counter())[raw] += n
+    controls_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "controls")
+    created = preserved = 0
+    for name in CORE:
+        folded = {}      # lower -> [best_raw, best_count, total_count]
+        for raw, n in inv.get(name, Counter()).items():
+            entry = folded.get(raw.lower())
+            if entry is None:
+                folded[raw.lower()] = [raw, n, n]
+            else:
+                entry[2] += n
+                if n > entry[1]:
+                    entry[0], entry[1] = raw, n
+        aliases = [e[0] for e in sorted(folded.values(), key=lambda e: -e[2])]
+        folder = os.path.join(controls_dir, _title(name))
+        os.makedirs(folder, exist_ok=True)
+        path = os.path.join(folder, "aliases.json")
+        if os.path.exists(path):
+            preserved += 1
+            continue
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(aliases, fh, indent=2, ensure_ascii=False)
+            fh.write("\n")
+        created += 1
+
     distinct = len(counts)
     print(f"distinct names      : {distinct}")
     print(f"mapped distinct     : {len(mapping)} ({len(mapping) / distinct:.1%})")
@@ -361,6 +415,7 @@ def main(argv):
     print(f"occurrences mapped  : {mapped_occ} ({mapped_occ / total_occ:.1%})")
     print(f"canonical controls  : {sum(len(v) for v in vocab.values())}")
     print(f"unmapped distinct   : {len(unmapped)}")
+    print(f"controls tree       : {created} created, {preserved} preserved -> {controls_dir}")
     print(f"wrote -> {out}")
     return 0
 
