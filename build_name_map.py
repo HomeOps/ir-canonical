@@ -318,9 +318,19 @@ def main(argv):
         else:
             unmapped.append((n, raw))
 
-    # flipper_name_map.json — sorted by raw name for stable diffs
+    # flipper_name_map.json — keys are CASE-FOLDED. Flipper files disagree on
+    # casing (e.g. "0/AV" vs "0/av"), and canonical() is case-insensitive, so the
+    # lookup map must be too: fold keys to lower-case and dedupe. (Keeping both
+    # casings makes valid-but-fragile JSON that case-insensitive parsers — e.g.
+    # PowerShell ConvertFrom-Json — reject.) Conflicting values would be a bug.
+    folded, conflicts = {}, 0
+    for raw, canon in mapping.items():
+        key = raw.lower()
+        if key in folded and folded[key] != canon:
+            conflicts += 1
+        folded[key] = canon
     with open(os.path.join(out, "flipper_name_map.json"), "w", encoding="utf-8") as fh:
-        json.dump(dict(sorted(mapping.items())), fh, indent=2, ensure_ascii=False)
+        json.dump(dict(sorted(folded.items())), fh, indent=2, ensure_ascii=False)
         fh.write("\n")
 
     # unmapped_names.txt — by frequency desc
@@ -346,6 +356,7 @@ def main(argv):
     distinct = len(counts)
     print(f"distinct names      : {distinct}")
     print(f"mapped distinct     : {len(mapping)} ({len(mapping) / distinct:.1%})")
+    print(f"case-folded keys    : {len(folded)} (collapsed {len(mapping) - len(folded)}; conflicts {conflicts})")
     print(f"occurrences total   : {total_occ}")
     print(f"occurrences mapped  : {mapped_occ} ({mapped_occ / total_occ:.1%})")
     print(f"canonical controls  : {sum(len(v) for v in vocab.values())}")

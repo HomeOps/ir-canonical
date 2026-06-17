@@ -19,7 +19,7 @@ cannot match a control by raw name.
 |------|------|
 | `build_name_map.py` | Generator + the importable `canonical(name)` function. |
 | `data/canonical_controls.yaml` | The canonical vocabulary, grouped by category. |
-| `data/flipper_name_map.json` | `{ raw_name: canonical_name }` for every mapped name. |
+| `data/flipper_name_map.json` | `{ name: canonical_name }`, keys **lower-cased** — look up with `name.lower()`. |
 | `data/unmapped_names.txt` | The long tail (device-specific labels, typos), by frequency, for review. |
 
 ## How the mapping works
@@ -41,6 +41,11 @@ play_pause`, `SCAN_>> → fast_forward`, `DVD_Menu → menu`, `Open/Close → ej
 
 The same `canonical()` is importable, so the codegen can normalize live rather
 than depend on the frozen JSON.
+
+> **JSON keys are case-folded.** Flipper files disagree on casing (`0/AV` vs
+> `0/av`), and casing never changes meaning, so map keys are lower-cased and
+> deduped — look up with `name.lower()`. This also keeps the file parseable by
+> case-insensitive consumers (e.g. PowerShell `ConvertFrom-Json`).
 
 ## Coverage (current)
 
