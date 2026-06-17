@@ -1,0 +1,33 @@
+name: publish
+
+# Fires when release-please publishes a GitHub Release. Builds the wheel/sdist
+# (the hatch hook bakes the current controls/ map in) and uploads to PyPI via
+# trusted publishing (OIDC — no API token).
+#
+# One-time setup on PyPI: create the project `homeops-ir-canonical` and add a
+# trusted publisher → owner `HomeOps`, repo `ir-canonical`, workflow
+# `publish.yaml`, environment `pypi`.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  id-token: write        # OIDC for PyPI trusted publishing
+  contents: read
+
+jobs:
+  pypi:
+    name: Build + publish to PyPI
+    runs-on: ubuntu-latest
+    environment: pypi
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install build hatchling
+      - name: Build sdist + wheel
+        run: python -m build --no-isolation
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

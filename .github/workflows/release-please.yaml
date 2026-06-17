@@ -1,0 +1,20 @@
+name: release-please
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      # Maintains a release PR; merging it bumps the version in pyproject.toml,
+      # updates CHANGELOG.md, tags, and publishes a GitHub Release — which
+      # triggers publish.yaml to upload the wheel to PyPI.
+      - uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}

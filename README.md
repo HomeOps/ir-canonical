@@ -1,87 +1,82 @@
 # ir-canonical
 
 A **canonical media-control vocabulary** and a **Flipper-IRDB name → canonical**
-mapping, so anything that processes IR remotes (the ESPHome codegen at
-YAML-generation time, Concerto when resolving activities) can act on controls
-*semantically* instead of matching raw button strings.
+mapping, published as a small Python library so both the **ESPHome codegen**
+(`esphome-ir-codegen`) and **Concerto** can resolve remote buttons *semantically*
+instead of matching raw strings.
 
 ## Why
 
 [Flipper-IRDB](https://github.com/Lucaslhm/Flipper-IRDB) has no enforced button
-naming. Measured across the whole DB: **54,415 distinct names** over **301,921
-occurrences**. One control appears under dozens of spellings — "volume up" alone:
-`VOL+`, `Vol_up`, `VOLUME_UP`, `VOL_^`, `TV_Vol+`, `VOLUME+`, `VOL +`, … So you
+naming — **54,415 distinct names** over 301,921 occurrences. "Volume up" alone
+appears as `VOL+`, `Vol_up`, `VOLUME_UP`, `VOL_^`, `TV_Vol+`, `AMP_VOL+`, … So you
 cannot match a control by raw name.
 
-## What's here
+## Use it
 
-| File | What |
-|------|------|
-| `controls/<Name>/aliases.json` | **The human-editable curated tree** — one folder per core control, holding a JSON list of its spellings. |
-| `build_name_map.py` | Generator + the importable `canonical(name)` function. |
-| `data/canonical_controls.yaml` | The full canonical vocabulary (all 194), grouped by category. |
-| `data/flipper_name_map.json` | `{ name: canonical_name }`, keys **lower-cased** — look up with `name.lower()`. |
-| `data/unmapped_names.txt` | The long tail (device-specific labels, typos), by frequency, for review. |
+```bash
+pip install homeops-ir-canonical
+```
+
+```python
+from ir_canonical import resolve, canonical, MAP
+
+resolve("VOL+")        # -> "volume_up"  (curated lookup, baked at build time)
+resolve("TV_Power")    # -> "power_toggle"
+canonical("Ch_prev")   # -> "channel_down"  (rule engine; maps unseen spellings)
+canonical("HDMI_1")    # -> "input_hdmi_1"
+MAP["vol+"]            # the flat {alias: canonical} dict, lower-cased keys
+```
+
+- **`resolve(name)`** — fast curated lookup via the bundled, human-maintained
+  `controls/` tree (compiled to `control_map.json` at build time).
+- **`canonical(name)`** — the broad rule-based engine; resolves spellings the
+  curated tree hasn't enumerated yet, and the full vocabulary (not just the core).
+
+Both are case-insensitive.
 
 ## The curated controls tree (edit this by hand)
 
-`controls/` is the human-owned source of truth for the **core** controls that
-matter for driving activities (power / volume / channel / transport / navigation
-/ digits / source — a curated subset, not all 194):
+`src/ir_canonical/controls/` is the human-owned source of truth for the **core**
+controls that matter for driving activities (power / volume / channel / transport
+/ navigation / digits / source — a curated subset):
 
 ```
-controls/
+src/ir_canonical/controls/
   Volume_Up/aliases.json     ["VOL+", "Vol_up", "VOLUME_UP", "AMP_VOL+", ...]
   Power_Toggle/aliases.json  ["POWER", "STANDBY", "TV_POWER", "PWR", ...]
   ...
 ```
 
-The generator **seeds** each `aliases.json` from the database (most-frequent
-spelling first) and then **never overwrites it** — so once you've pruned or
-extended a control's aliases by hand, re-running keeps your edits. To add a new
-control, make a folder and an `aliases.json`; to widen coverage, drop spellings
-into the matching control.
+Edit any `aliases.json` to prune or extend a control. The build **bakes** the tree
+into `control_map.json` (so installs get an instant lookup); CI fails the build if
+two controls claim the same alias.
 
-## How the mapping works
+## Layout
 
-It's **order-independent and rule-based**, so spellings not yet in the DB still
-map. `canonical(name)`:
+| Path | What |
+|------|------|
+| `src/ir_canonical/normalize.py` | the rule-based `canonical()` engine + vocabulary |
+| `src/ir_canonical/controls/` | the curated tree (edit by hand) |
+| `src/ir_canonical/compile.py` | tree → `{alias: canonical}` compiler |
+| `hatch_build.py` | build hook that bakes `control_map.json` into the wheel |
+| `seed.py` | dev tool: seed the tree + `data/` reports from a Flipper-IRDB clone |
+| `data/` | full auto-derived map + unmapped tail (reference, not shipped) |
 
-1. bare digit → `digit_N`;
-2. a lone source label (`CD`, `DVD`, `TV`, `HDMI`, …) → `input_<label>`;
-3. otherwise tokenize (camelCase + separators + sign glyphs `+ - ^ >> <<`),
-   expand each token (`vol→volume`, `+→up`, `ffwd→fast_forward`, …), drop
-   device/filler tokens (`tv`, `dvd`, `key`, …), and match the resulting token
-   **set** against the canonical table;
-4. labelled inputs with a single small index (`HDMI_1`, `Video_2`) →
-   `input_<label>_<n>`.
-
-Examples: `TV_Vol+ → volume_up`, `Ch_prev → channel_down`, `Play/Pause →
-play_pause`, `SCAN_>> → fast_forward`, `DVD_Menu → menu`, `Open/Close → eject`.
-
-The same `canonical()` is importable, so the codegen can normalize live rather
-than depend on the frozen JSON.
-
-> **JSON keys are case-folded.** Flipper files disagree on casing (`0/AV` vs
-> `0/av`), and casing never changes meaning, so map keys are lower-cased and
-> deduped — look up with `name.lower()`. This also keeps the file parseable by
-> case-insensitive consumers (e.g. PowerShell `ConvertFrom-Json`).
-
-## Coverage (current)
-
-- **57.7%** of all button *occurrences* mapped (the head of the distribution).
-- **194** canonical controls across power / volume / channel / transport /
-  navigation / input / digit / color / a-v / edit.
-- The unmapped ~51k distinct names are intentionally left alone — device-specific
-  features, function keys, frequencies, and noise. Coverage of *occurrences*
-  matters more than of *distinct names*; mapping the long tail risks wrong
-  mappings, which are worse than none.
-
-## Regenerate
+## Develop
 
 ```bash
-python build_name_map.py /path/to/Flipper-IRDB-clone data
+python -m build --wheel --no-isolation     # build (bakes the map)
+pip install dist/*.whl && pytest -q         # test as a consumer
+python seed.py /path/to/Flipper-IRDB-clone  # re-seed the tree (won't clobber edits)
 ```
 
-Reproducible as the database grows; extend `TOKEN_EXPAND` / the `reg(...)` table
-to raise coverage, and re-run.
+## Release & publish
+
+Versioning is managed by [release-please](https://github.com/googleapis/release-please)
+(Conventional Commits). Merging the release PR tags a GitHub Release, which triggers
+`publish.yaml` to upload the wheel to **PyPI via trusted publishing**.
+
+> One-time PyPI setup: create the `homeops-ir-canonical` project and add a trusted
+> publisher → owner `HomeOps`, repo `ir-canonical`, workflow `publish.yaml`,
+> environment `pypi`.

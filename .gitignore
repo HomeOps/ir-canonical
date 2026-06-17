@@ -2,4 +2,10 @@ __pycache__/
 *.pyc
 .ruff_cache/
 .pytest_cache/
+# generated at build time by hatch_build.py
+src/ir_canonical/control_map.json
 control_map.json
+# build artifacts
+build/
+dist/
+*.egg-info/
