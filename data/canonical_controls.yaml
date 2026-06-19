@@ -209,3 +209,35 @@ edit:
   - delete
   - reset
   - store
+app:
+  - app_apple_tv
+  - app_disney_plus
+  - app_hbo_max
+  - app_hulu
+  - app_netflix
+  - app_paramount_plus
+  - app_peacock
+  - app_plex
+  - app_prime_video
+  - app_spotify
+  - app_youtube
+gamepad:
+  - pad_a
+  - pad_b
+  - pad_down
+  - pad_home
+  - pad_l1
+  - pad_l2
+  - pad_l3
+  - pad_left
+  - pad_menu
+  - pad_r1
+  - pad_r2
+  - pad_r3
+  - pad_right
+  - pad_select
+  - pad_start
+  - pad_up
+  - pad_view
+  - pad_x
+  - pad_y

@@ -52,6 +52,19 @@ Edit any `aliases.json` to prune or extend a control. The build **bakes** the tr
 into `control_map.json` (so installs get an instant lookup); CI fails the build if
 two controls claim the same alias.
 
+### Beyond IR: app and gamepad families
+
+Two families extend the vocabulary past classic IR remotes so one control language
+spans IR, BLE, and native transports:
+
+- **`app_*`** — video-app launch hotkeys (`app_netflix`, `app_youtube`,
+  `app_prime_video`, `app_disney_plus`, …). These appear on real IR remotes, so
+  both `resolve()` and `canonical()` map their Flipper spellings.
+- **`pad_*`** — gamepad controller inputs (`pad_a`, `pad_up`, `pad_l1`,
+  `pad_start`, …). These have **no IR source** — they exist purely as
+  cross-transport canonical vocabulary, so `resolve()`/`canonical()` only match
+  the namespaced `pad_*` spellings, not arbitrary remote names.
+
 ## Layout
 
 | Path | What |

@@ -55,6 +55,8 @@ TOKEN_EXPAND = {
     "srch": "search", "in": "input",
     # input synonyms
     "coaxial": "coax", "toslink": "optical", "earc": "arc",
+    # video apps
+    "yt": "youtube",
 }
 
 # Device-context / filler tokens to drop (so "TV_Vol+" -> volume_up). dvd/cd/vcr
@@ -168,6 +170,38 @@ reg("clear", "edit", "clear")
 reg("reset", "edit", "reset")
 reg("store", "edit", "store")
 reg("delete", "edit", "delete")
+# video apps — dedicated launch hotkeys found on many TV / STB / streamer remotes.
+# "TV" is a dropped device token, so register a bare-brand token set too
+# (e.g. "Apple TV" -> {apple}).
+reg("app_netflix", "app", "netflix")
+reg("app_youtube", "app", "youtube")
+reg("app_prime_video", "app", "prime video", "amazon prime", "prime", "amazon")
+reg("app_disney_plus", "app", "disney plus", "disney")
+reg("app_hbo_max", "app", "hbo max", "hbo", "max")
+reg("app_hulu", "app", "hulu")
+reg("app_apple_tv", "app", "apple tv", "apple")
+reg("app_spotify", "app", "spotify")
+reg("app_plex", "app", "plex")
+reg("app_paramount_plus", "app", "paramount plus", "paramount")
+reg("app_peacock", "app", "peacock")
+# gamepad — controller inputs. No IR source (Flipper has none); these exist purely
+# as cross-transport canonical vocabulary for BLE/native devices. Every set carries
+# the "pad" token so they never collide with IR remote names.
+for _b in ("a", "b", "x", "y"):
+    reg(f"pad_{_b}", "gamepad", f"pad {_b}")
+reg("pad_up", "gamepad", "pad up")
+reg("pad_down", "gamepad", "pad down")
+reg("pad_left", "gamepad", "pad left")
+reg("pad_right", "gamepad", "pad right")
+# shoulders/triggers: the tokenizer splits letter↔digit (l1 -> "l 1"), so the
+# registered token set must be split to match.
+for _s in ("l1", "r1", "l2", "r2", "l3", "r3"):
+    reg(f"pad_{_s}", "gamepad", f"pad {_s[0]} {_s[1]}")
+reg("pad_start", "gamepad", "pad start")
+reg("pad_select", "gamepad", "pad select")
+reg("pad_home", "gamepad", "pad home")
+reg("pad_view", "gamepad", "pad view")
+reg("pad_menu", "gamepad", "pad menu")
 
 # Curated subset of canonical controls published as the controls/ tree. These are
 # the controls that matter for driving activities across TVs / AVRs / STBs /
@@ -190,6 +224,10 @@ CORE = [
     "input_optical", "input_coax", "input_arc",
     "input_usb", "input_bluetooth",
     "input_tv", "input_pc", "input_vga", "input_phono",
+    # video apps — dedicated launch hotkeys on modern TV / streamer remotes
+    "app_netflix", "app_youtube", "app_prime_video", "app_disney_plus",
+    "app_hbo_max", "app_hulu", "app_apple_tv", "app_spotify", "app_plex",
+    "app_paramount_plus", "app_peacock",
 ]
 
 INPUT_LABELS = {
@@ -294,4 +332,8 @@ def category_of(canon):
         return "digit"
     if canon.startswith("input_"):
         return "input"
+    if canon.startswith("app_"):
+        return "app"
+    if canon.startswith("pad_"):
+        return "gamepad"
     return CATEGORY.get(canon, "other")
