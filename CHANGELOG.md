@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.1](https://github.com/HomeOps/ir-canonical/compare/v0.1.0...v0.1.1) (2026-06-19)
+
+
+### Features
+
+* add video-app and gamepad control families ([888e7bc](https://github.com/HomeOps/ir-canonical/commit/888e7bceadd7f11bafb91ee3447abdcd68a34f65))
+* add video-app and gamepad control families ([68bd9c4](https://github.com/HomeOps/ir-canonical/commit/68bd9c42f45c559816e466fe3d1a254ec63796f5))
+
 ## 0.1.0 (2026-06-17)
 
 

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "homeops-ir-canonical"
-version = "0.1.0"                      # managed by release-please
+version = "0.1.1"                      # managed by release-please
 description = "Canonical media-control vocabulary + Flipper-IRDB name→canonical mapping."
 readme = "README.md"
 requires-python = ">=3.9"
