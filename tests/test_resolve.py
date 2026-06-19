@@ -28,6 +28,27 @@ def test_input_controls():
     assert resolve("HDMI_1") == "input_hdmi1"
 
 
+def test_video_app_controls():
+    # curated aliases (resolve) + rule engine (canonical)
+    assert resolve("Netflix") == "app_netflix"
+    assert resolve("You_Tube") == "app_youtube"
+    assert resolve("Disney+") == "app_disney_plus"
+    assert resolve("HBO Max") == "app_hbo_max"
+    assert canonical("Netflix") == "app_netflix"
+    assert canonical("YT") == "app_youtube"
+    assert canonical("Prime Video") == "app_prime_video"
+    # "TV" is a dropped device token, so "Apple TV" reduces to {apple}
+    assert canonical("Apple TV") == "app_apple_tv"
+
+
+def test_gamepad_controls():
+    # no IR source, but the canonical vocabulary + tree must carry them
+    assert resolve("pad_a") == "pad_a"
+    assert resolve("pad_menu") == "pad_menu"
+    assert canonical("Pad_A") == "pad_a"
+    assert canonical("pad l1") == "pad_l1"
+
+
 def test_map_keys_are_lowercased():
     assert all(key == key.lower() for key in MAP)
 
